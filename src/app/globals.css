@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b0f14;
+  --surface: #141b23;
+  --border: #1e2930;
+  --text: #e6edf3;
+  --muted: #8b9cad;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --success: #22c55e;
+  --error: #ef4444;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
