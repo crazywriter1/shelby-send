@@ -2,6 +2,11 @@
   "name": "shelby-send",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://shelby-send.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crazywriter1/shelby-send.git"
+  },
   "scripts": {
     "dev": "npx next dev --turbopack",
     "build": "node --max-old-space-size=6144 ./node_modules/next/dist/bin/next build",
