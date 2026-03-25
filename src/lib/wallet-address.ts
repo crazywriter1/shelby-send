@@ -1,8 +1,8 @@
 import type { AccountInfo } from "@aptos-labs/wallet-adapter-core";
 
 /**
- * Some wallets (e.g. Pontem) omit or delay-populate `account.address`; avoid
- * calling `.toString()` on undefined.
+ * Some adapters omit or delay-populate `account.address`; avoid calling
+ * `.toString()` on undefined.
  */
 export function getWalletAccountAddress(
   account: AccountInfo | null | undefined

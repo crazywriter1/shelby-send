@@ -107,7 +107,7 @@ export default function Home() {
           const walletAddr = getWalletAccountAddress(account);
           if (!connected || !walletAddr) {
             throw new Error(
-              "Connect your Aptos wallet on Shelbynet. If it still fails, disconnect and reconnect (Pontem sometimes reports connected before the address is ready)."
+              "Connect the Petra wallet on Shelbynet and try again. If the address does not appear, disconnect and reconnect."
             );
           }
 
