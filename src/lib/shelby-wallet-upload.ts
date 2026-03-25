@@ -10,7 +10,10 @@ import {
   expectedTotalChunksets,
   generateCommitments,
 } from "@shelby-protocol/sdk/browser";
-import { AccountAddress, Aptos, AptosConfig } from "@aptos-labs/ts-sdk";
+import { AccountAddress, Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
+
+/** Aptos REST for coordination on Shelby’s network (not api.devnet.aptoslabs.com). */
+const SHELBYNET_FULLNODE = "https://api.shelbynet.shelby.xyz/v1";
 import { nanoid } from "nanoid";
 import { getPublicShelbyNetwork } from "@/lib/shelby-env";
 import { formatError } from "@/lib/format-error";
@@ -154,12 +157,14 @@ export async function uploadShareViaWallet(
     apiKey: shelbyApiKey,
   });
 
-  const aptosApiKey =
-    process.env.NEXT_PUBLIC_APTOS_API_KEY?.trim() || shelbyApiKey;
+  // Do NOT pass the Shelby/Geomi RPC key as Aptos client API_KEY — Geomi routes that to Devnet,
+  // which has no Shelby blob_metadata module (see module_not_found on devnet).
+  const aptosOnlyKey = process.env.NEXT_PUBLIC_APTOS_API_KEY?.trim();
   const aptos = new Aptos(
     new AptosConfig({
       network,
-      ...(aptosApiKey ? { clientConfig: { API_KEY: aptosApiKey } } : {}),
+      ...(network === Network.SHELBYNET ? { fullnode: SHELBYNET_FULLNODE } : {}),
+      ...(aptosOnlyKey ? { clientConfig: { API_KEY: aptosOnlyKey } } : {}),
     })
   );
 
