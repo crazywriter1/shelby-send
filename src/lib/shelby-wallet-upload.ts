@@ -13,6 +13,7 @@ import {
 import { AccountAddress, Aptos, AptosConfig } from "@aptos-labs/ts-sdk";
 import { nanoid } from "nanoid";
 import { getPublicShelbyNetwork } from "@/lib/shelby-env";
+import { formatError } from "@/lib/format-error";
 import type {
   AptosSignAndSubmitTransactionOutput,
   InputTransactionData,
@@ -22,6 +23,27 @@ const TTL_MICROS = 30 * 24 * 60 * 60 * 1_000_000;
 
 function expirationMicros(): number {
   return Math.floor(Date.now() * 1000) + TTL_MICROS;
+}
+
+function transactionHashFromWalletSubmit(
+  submitted: AptosSignAndSubmitTransactionOutput
+): string {
+  const s = submitted as unknown as Record<string, unknown>;
+  const hash =
+    (typeof s.hash === "string" && s.hash) ||
+    (typeof s.transactionHash === "string" && s.transactionHash) ||
+    (typeof s.pendingTransactionResponse === "object" &&
+      s.pendingTransactionResponse &&
+      typeof (s.pendingTransactionResponse as { hash?: string }).hash ===
+        "string" &&
+      (s.pendingTransactionResponse as { hash: string }).hash) ||
+    "";
+  if (!hash) {
+    throw new Error(
+      `Wallet returned no transaction hash. If you use Geomi, set NEXT_PUBLIC_APTOS_API_KEY (same or Aptos key) for fullnode access. Keys seen: ${Object.keys(s).join(", ")}`
+    );
+  }
+  return hash;
 }
 
 async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Uint8Array> {
@@ -78,7 +100,8 @@ async function registerAndPutBlob(params: {
     data: payload,
   });
 
-  await aptos.waitForTransaction({ transactionHash: submitted.hash });
+  const txHash = transactionHashFromWalletSubmit(submitted);
+  await aptos.waitForTransaction({ transactionHash: txHash });
 
   await shelby.rpc.putBlob({
     account: owner,
@@ -131,9 +154,12 @@ export async function uploadShareViaWallet(
     apiKey: shelbyApiKey,
   });
 
+  const aptosApiKey =
+    process.env.NEXT_PUBLIC_APTOS_API_KEY?.trim() || shelbyApiKey;
   const aptos = new Aptos(
     new AptosConfig({
       network,
+      ...(aptosApiKey ? { clientConfig: { API_KEY: aptosApiKey } } : {}),
     })
   );
 
@@ -143,23 +169,31 @@ export async function uploadShareViaWallet(
   });
   const metaBytes = new TextEncoder().encode(metaJson);
 
-  await registerAndPutBlob({
-    shelby,
-    aptos,
-    signAndSubmitTransaction,
-    owner,
-    blobName: metaName,
-    data: metaBytes,
-  });
+  try {
+    await registerAndPutBlob({
+      shelby,
+      aptos,
+      signAndSubmitTransaction,
+      owner,
+      blobName: metaName,
+      data: metaBytes,
+    });
+  } catch (e) {
+    throw new Error(`Meta blob (1/2): ${formatError(e)}`);
+  }
 
-  await registerAndPutBlob({
-    shelby,
-    aptos,
-    signAndSubmitTransaction,
-    owner,
-    blobName: dataName,
-    data: fileBytes,
-  });
+  try {
+    await registerAndPutBlob({
+      shelby,
+      aptos,
+      signAndSubmitTransaction,
+      owner,
+      blobName: dataName,
+      data: fileBytes,
+    });
+  } catch (e) {
+    throw new Error(`File blob (2/2): ${formatError(e)}`);
+  }
 
   const base =
     typeof window !== "undefined"

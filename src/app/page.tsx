@@ -5,6 +5,8 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { WalletSelector } from "@aptos-labs/wallet-adapter-ant-design";
 import { encryptToBytes } from "@/lib/crypto";
 import { uploadShareViaWallet } from "@/lib/shelby-wallet-upload";
+import { getWalletAccountAddress } from "@/lib/wallet-address";
+import { formatError } from "@/lib/format-error";
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 
@@ -82,8 +84,11 @@ export default function Home() {
               "Missing NEXT_PUBLIC_SHELBY_API_KEY (set in .env.local for production)."
             );
           }
-          if (!connected || !account) {
-            throw new Error("Connect your Aptos wallet to upload.");
+          const walletAddr = getWalletAccountAddress(account);
+          if (!connected || !walletAddr) {
+            throw new Error(
+              "Connect your Aptos wallet on Shelbynet. If it still fails, disconnect and reconnect (Pontem sometimes reports connected before the address is ready)."
+            );
           }
 
           const raw = await file.arrayBuffer();
@@ -98,7 +103,7 @@ export default function Home() {
             encrypted,
             filename: file.name || "file",
             shelbyApiKey: shelbyKey,
-            accountAddress: account.address.toString(),
+            accountAddress: walletAddr,
             signAndSubmitTransaction,
           });
 
@@ -113,13 +118,16 @@ export default function Home() {
         setPassword("");
         (e.target as HTMLFormElement).reset();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Upload failed.");
+        console.error("Upload error:", err);
+        setError(formatError(err));
       } finally {
         setLoading(false);
       }
     },
     [file, password, demoMode, connected, account, signAndSubmitTransaction]
   );
+
+  const walletAddr = getWalletAccountAddress(account);
 
   const copyLink = useCallback(() => {
     if (result?.link) {
@@ -181,7 +189,7 @@ export default function Home() {
               type="submit"
               disabled={
                 loading ||
-                (!demoMode && (!connected || !account))
+                (!demoMode && (!connected || !walletAddr))
               }
               className="w-full py-3 rounded bg-[var(--accent)] text-white font-medium hover:bg-[var(--accent-hover)] disabled:opacity-50"
             >
