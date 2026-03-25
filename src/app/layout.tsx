@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "@aptos-labs/wallet-adapter-ant-design/dist/index.css";
 import "./globals.css";
-import { WalletProvider } from "@/components/wallet-provider";
+import { AppProviders } from "@/components/app-providers";
 
 export const metadata: Metadata = {
   title: "Shelby Send — Encrypted file sharing",
@@ -17,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <WalletProvider>{children}</WalletProvider>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

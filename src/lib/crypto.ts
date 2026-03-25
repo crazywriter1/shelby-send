@@ -98,3 +98,19 @@ export async function decryptFromBytes(password: string, raw: Uint8Array): Promi
 
   return new Uint8Array(decrypted);
 }
+
+/** Wrong password / corrupted ciphertext usually surfaces as OperationError from AES-GCM. */
+export function isLikelyWrongPasswordError(err: unknown): boolean {
+  if (typeof DOMException !== "undefined" && err instanceof DOMException) {
+    return err.name === "OperationError";
+  }
+  if (err instanceof Error) {
+    const m = err.message.toLowerCase();
+    return (
+      m.includes("operationerror") ||
+      m.includes("unable to decrypt") ||
+      m.includes("decryption failed")
+    );
+  }
+  return false;
+}

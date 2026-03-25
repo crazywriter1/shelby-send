@@ -2,7 +2,8 @@
 
 import { use, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { decryptFromBytes } from "@/lib/crypto";
+import { decryptFromBytes, isLikelyWrongPasswordError } from "@/lib/crypto";
+import { formatError } from "@/lib/format-error";
 import { downloadBlobBytes } from "@/lib/shelby-wallet-upload";
 
 type Info = {
@@ -134,9 +135,11 @@ export default function DownloadPage({
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Download or decryption failed."
-      );
+      if (info.encrypted && isLikelyWrongPasswordError(err)) {
+        setError("Incorrect password. Check spelling and caps lock, then try again.");
+      } else {
+        setError(formatError(err) || "Download or decryption failed.");
+      }
     } finally {
       setDecrypting(false);
     }
@@ -153,12 +156,19 @@ export default function DownloadPage({
           <p className="text-center text-[var(--muted)]">Loading…</p>
         )}
 
-        {error && !loading && (
-          <p className="text-center text-[var(--error)] mb-4">{error}</p>
+        {error && !loading && !info && (
+          <p className="text-center text-[var(--error)] mb-4" role="alert">
+            {error}
+          </p>
         )}
 
         {info && !loading && (
           <div className="space-y-4 p-4 rounded-lg bg-[var(--surface)] border border-[var(--border)]">
+            <p className="text-xs text-[var(--muted)] leading-relaxed border-b border-[var(--border)] pb-3">
+              You don&apos;t need a wallet or gas to download. This page loads
+              the file from Shelby using the app&apos;s key. The sender already
+              paid fees when they uploaded.
+            </p>
             <p className="text-sm text-[var(--muted)] break-all">
               {info.filename}
             </p>
@@ -168,11 +178,19 @@ export default function DownloadPage({
                 <input
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
                   placeholder="File password"
                   className="mt-1 w-full px-3 py-2 rounded border border-[var(--border)] bg-[var(--bg)] text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 />
               </label>
+            )}
+            {error && (
+              <p className="text-sm text-[var(--error)]" role="alert">
+                {error}
+              </p>
             )}
             <button
               type="button"

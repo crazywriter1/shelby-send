@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { WalletSelector } from "@aptos-labs/wallet-adapter-ant-design";
 import { encryptToBytes } from "@/lib/crypto";
@@ -25,6 +25,9 @@ export default function Home() {
   const [result, setResult] = useState<Result | null>(null);
   const [demoMode, setDemoMode] = useState(false);
   const [networkLabel, setNetworkLabel] = useState<string | null>(null);
+  const [filePickLoading, setFilePickLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pickFocusHandlerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     fetch("/api/demo")
@@ -39,10 +42,27 @@ export default function Home() {
   }, []);
 
   const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (pickFocusHandlerRef.current) {
+      window.removeEventListener("focus", pickFocusHandlerRef.current);
+      pickFocusHandlerRef.current = null;
+    }
+    setFilePickLoading(false);
     const f = e.target.files?.[0];
     setFile(f || null);
     setError("");
     setResult(null);
+  }, []);
+
+  const openFilePicker = useCallback(() => {
+    setFilePickLoading(true);
+    const onWindowFocus = () => {
+      window.removeEventListener("focus", onWindowFocus);
+      pickFocusHandlerRef.current = null;
+      window.setTimeout(() => setFilePickLoading(false), 150);
+    };
+    pickFocusHandlerRef.current = onWindowFocus;
+    window.addEventListener("focus", onWindowFocus);
+    fileInputRef.current?.click();
   }, []);
 
   const onSubmit = useCallback(
@@ -162,14 +182,32 @@ export default function Home() {
 
         {!result ? (
           <form onSubmit={onSubmit} className="space-y-4">
-            <label className="block">
+            <div className="block">
               <span className="text-sm text-[var(--muted)]">File</span>
               <input
+                ref={fileInputRef}
+                id="upload-file-input"
                 type="file"
+                className="sr-only"
                 onChange={onFileChange}
-                className="mt-1 block w-full text-sm text-[var(--text)] file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-[var(--surface)] file:text-[var(--text)]"
+                tabIndex={-1}
               />
-            </label>
+              <div className="mt-1 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={openFilePicker}
+                  disabled={filePickLoading || loading}
+                  aria-controls="upload-file-input"
+                  aria-label="Choose file to upload"
+                  className="shrink-0 rounded px-4 py-2 text-sm font-medium bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--border)] disabled:opacity-50"
+                >
+                  {filePickLoading ? "Opening…" : "Choose file"}
+                </button>
+                <span className="text-sm text-[var(--muted)] truncate min-w-0 max-w-[12rem] sm:max-w-none">
+                  {file ? file.name : "No file chosen"}
+                </span>
+              </div>
+            </div>
             <label className="block">
               <span className="text-sm text-[var(--muted)]">
                 Password (optional)
